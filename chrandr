@@ -1,0 +1,465 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+chrandr - Change (x)randr screen configuration in a gui.
+
+Let the user to choose between a few list of outputs configurations.
+By default, opens a GUI.
+The --prefer option is an automatic mode, try to use the preferred
+  outputs (try order defined in the configuration).
+
+
+--------------
+Configuration
+--------------
+* By default, stored in ~/.config/chrandr.conf
+* ini like format
+* Outputs configuration must be written by hand.
+  Use xrandr command to list ports and to test commands.
+
+Example::
+    # general options
+    [chrandr]
+    prefer1 = <first configuration code to try>
+    prefer2 = <second configuration code code to try>
+    prefer3 = <third configuration code code to try>
+
+    # output exemple : the output code is 'vga'
+    [vga]
+    # text shown on the radio button
+    title = Use only VGA
+    # list (comma separated) of ports needed to be connected
+    ports = VGA-1
+    # list (comma separated) of shell commands
+    commands : xrandr --output LVDS-1 --off --output VGA-1 --auto,
+        amixer set Master unmute
+
+With this configuration exemple, if the user selects this choice,
+  the 2 xrandr commands are executed (one by one).
+"""
+
+__author__ = "Risk"
+__license__ = "MIT"
+__version__ = "0.1"
+
+import os
+import os.path
+import sys
+import logging
+import argparse
+import signal
+import subprocess
+import re
+import pprint
+import pkg_resources
+
+import configparser
+import json
+
+from gi.repository import GObject
+from gi.repository import Gtk
+
+"""Default configuration filename in ~/.config/ directory."""
+DEFAULT_CONFIG_FILENAME = '~/.config/chrandr/chrandr.conf'
+DEFAULT_STATUS_FILENAME = '~/.config/chrandr/chrandr_status.conf'
+
+GLADE_XML_UI = """
+<interface>
+  <requires lib="gtk+" version="3.12"/>
+  <object class="GtkWindow" id="window">
+    <property name="title" translatable="yes">ChRandr - Screen configuration</property>
+    <child>
+      <object class="GtkGrid" id="grid">
+        <property name="margin_left">5</property>
+        <property name="margin_right">5</property>
+        <property name="margin_top">5</property>
+        <property name="margin_bottom">5</property>
+        <child>
+          <object class="GtkLabel" id="label">
+            <property name="label" translatable="yes">Veuillez sélectionner la configuration Randr souhaitée.</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkButtonBox" id="buttonbox">
+            <property name="spacing">5</property>
+            <property name="layout_style">spread</property>
+            <child>
+              <object class="GtkButton" id="button_cancel">
+                <property name="label">gtk-cancel</property>
+                <property name="has_focus">True</property>
+                <property name="is_focus">True</property>
+                <property name="use_stock">True</property>
+                <signal name="clicked" handler="on_click_cancel" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="button_refresh">
+                <property name="label">gtk-refresh</property>
+                <property name="use_stock">True</property>
+                <signal name="clicked" handler="on_click_refresh" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="button_apply">
+                <property name="label">gtk-apply</property>
+                <property name="sensitive">False</property>
+                <property name="use_stock">True</property>
+                <signal name="clicked" handler="on_click_apply" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="button_ok">
+                <property name="label">gtk-ok</property>
+                <property name="use_stock">True</property>
+                <signal name="clicked" handler="on_click_ok" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">3</property>
+              </packing>
+            </child>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkBox" id="box_radio">
+            <property name="margin_left">5</property>
+            <property name="margin_right">5</property>
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
+            <property name="orientation">vertical</property>
+          </object>
+          <packing>
+            <property name="left_attach">0</property>
+            <property name="top_attach">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>
+"""
+
+
+class XrandrConfig:
+    """
+    Represents a XRandR configuration.
+
+    Fields:
+        * code (str): Configuration code
+        * title (str): Configuration title (used in the radio button)
+        * ports (list of str): List of xrandr ports, ie ['VGA', 'HDMI']
+        * commands (list of str): List of commands to execute
+        * widget (Gtk.RadioButton): Gtk button, None after constructor
+    """
+
+    def __init__(self, code, title, ports, commands):
+        """Constructs a xrandr configuration."""
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.code = code
+        self.title = title
+        self.ports = ports
+        self.commands = commands
+        self.logger.debug("Output %s needs ports: %s", self.code, pprint.pformat(self.ports))
+
+    def __str__(self):
+        return "XrandrConfig(code={})".format(self.code)
+    def __repr__(self):
+        return self.__str__()
+
+    def available(self, connected_outputs):
+        """
+        Returns if this configuration is available (True) or not (False).
+
+        Args:
+            * connected_outputs (list of str): List of connected
+              outputs, ie ['VGA', 'DVI']
+        Returns:
+            True if this configuration is available,
+            False otheriwse.
+        """
+        for port in self.ports:
+            if port not in connected_outputs:
+                return False
+        return True
+
+    def execute(self):
+        """Execute all commands associated with this configuration."""
+        try:
+            for cmd in self.commands:
+                self.logger.debug("Executing command: %s", cmd)
+                subprocess.check_output(cmd, stderr=subprocess.STDOUT,
+                    universal_newlines=True, shell=True)
+        except subprocess.CalledProcessError as e:
+            self.logger.error("xrandr error: %s", e.output, exc_info=True)
+
+
+class ChrandrConfig:
+    """
+    Chrandr configuration.
+    Loaded from an ini-like configuration file (using configparser.ConfigParser).
+
+    Fields:
+        * status_filename (str): Chrandr status filename
+        * prefer (str list): List of XrandrConfig codes
+        * randr (XrandrConfig list): List of defined xrandr configurations
+    """
+
+    def __init__(self, filename=DEFAULT_CONFIG_FILENAME):
+        """
+        Initialize the configuration.
+
+        Args:
+            filename (str): Filename to load, default to DEFAULT_CONFIG_FILENAME
+        Raises:
+            FileNotFoundError: If filename cannot be read
+        """
+        self.logger = logging.getLogger(self.__class__.__name__)
+        filename_expanded = os.path.expanduser(filename)
+        if not os.access(filename_expanded, os.R_OK):
+            raise FileNotFoundError("Cannot open or read the file: " + filename_expanded)
+        self.logger.debug("Loading the configuration file : %s", filename_expanded)
+        config_parser = configparser.ConfigParser()
+        config_parser.read(filename_expanded, encoding='UTF-8')
+
+        self.status_filename = os.path.expanduser(config_parser.get('chrandr', 'status_file',
+            fallback=DEFAULT_STATUS_FILENAME))
+
+        self.prefer = []
+        # load preferred configurations
+        for i in range(1, 4):
+            key = 'prefer{}'.format(i)
+            value = config_parser.get('chrandr', key, fallback='')
+            if value != '':
+                self.prefer.append(value)
+        self.logger.debug("Loaded preferred outputs: %s", self.prefer)
+
+        # read all randr configurations
+        self.randr = []
+        for code in config_parser.sections():
+            if code != 'chrandr': # ignore general configuration
+                # TODO Check that all items exists in the current section
+                title = config_parser.get(code, 'title', fallback=code)
+                ports_raw = config_parser.get(code, 'ports')
+                ports = list(filter(None, (x.strip() for x in ports_raw.split(','))))
+                commands_raw = config_parser.get(code, 'commands', fallback='')
+                commands = list(filter(None, (x.strip() for x in commands_raw.split(','))))
+                self.randr.append(XrandrConfig(code, title, ports, commands))
+        self.logger.debug("%d randr outputs loaded", len(self.randr))
+
+
+class ChRandrUI:
+    """
+    The chrandr GTK user interface.
+
+    Fields:
+        * config (ChrandrConfig) : Configuration used in the UI
+        * selected_data (XrandrConfig) : Selected configuration,
+          could be None
+        * window (Gtk.Window) : The GTK Window
+    """
+
+    def __init__(self, config):
+        """Constructor with the list of XrandrConfig configurations."""
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.config = config
+        self.selected_data = None
+        builder = Gtk.Builder()
+        # dev mode: load glade file in current directory
+        glade_filename = os.path.join(os.path.dirname(__file__), 'chrandr.glade')
+        if os.path.exists(glade_filename) and self.logger.isEnabledFor(logging.DEBUG):
+            # to load glade file using pkg_resources
+            # glade_content = pkg_resources.resource_string(__name__, 'chrandr.glade')
+            # builder.add_from_string(str(glade_content, encoding='utf-8'))
+            builder.add_from_file('chrandr.glade')
+            self.logger.debug("Loading GTK UI from glade file: " + glade_filename)
+        else:
+            # otherwise load glade using str variable in current file
+            builder.add_from_string(GLADE_XML_UI)
+            self.logger.debug("Loading GTK UI from str variable: " + glade_filename)
+        self.window = builder.get_object('window')
+        self._box_choices = builder.get_object('box_radio')
+        self._button_apply = builder.get_object('button_apply')
+        # radio button not shown to the user, permits to unselect all "reals" radios
+        self._fake_radio_button = None
+        self._init_choices()
+        # connect callbacks signals
+        builder.connect_signals(self)
+
+    def _init_choices(self):
+        """Initialize choices list (radio buttons) with all configurations."""
+        self._fake_radio_button = Gtk.RadioButton.new_with_label_from_widget(None, "(fake button)")
+        but = self._fake_radio_button
+        for cfg in self.config.randr:
+            button = Gtk.RadioButton.new_with_label_from_widget(but, cfg.title)
+            button.connect('toggled', self.on_select_choice, cfg)
+            cfg.widget = button
+            self._box_choices.pack_start(button, True, True, 2)
+
+    def _apply_choice(self):
+        """Execute commands associated with the selected choice."""
+        if self.selected_data:
+            self.logger.debug("Apply the output code '%s' : %s", self.selected_data.code,
+                self.selected_data.title)
+            self.selected_data.execute()
+            # reset field and button
+            self.selected_data = None
+            self._button_apply.set_sensitive(False)
+
+    def on_select_choice(self, widget, cfg_data):
+        if widget.get_active():
+            self.logger.debug("Output code '%s' (%s) is selected", cfg_data.code, cfg_data.title)
+            self.selected_data = cfg_data
+            self._button_apply.set_sensitive(True)
+        else:
+            # maybe not needed, because a radio is unselected only if another is selected
+            self.selected_data = None
+
+    def on_click_cancel(self, *args, **kwargs):
+        Gtk.main_quit()
+
+    def on_click_refresh(self, *args, **kwargs):
+        """Refresh UI with availables configurations or not."""
+        self.logger.debug("Refresh availables configurations...")
+        connected_outputs = get_connected_outputs()
+        for cfg in self.config.randr:
+            cfg.widget.set_sensitive(cfg.available(connected_outputs))
+        # active the fake radio to unselect "reals" radios
+        self._fake_radio_button.set_active(True)
+
+    def on_click_apply(self, *args, **kwargs):
+        self._apply_choice()
+
+    def on_click_ok(self, *args, **kwargs):
+        self._apply_choice()
+        Gtk.main_quit()
+
+
+def get_connected_outputs():
+    """Returns the list of connected outputs."""
+    logger = logging.getLogger('get_connected_outputs')
+    # execute xrandr query command
+    xrandr_output = subprocess.check_output(args=["xrandr", "--query"], universal_newlines=True)
+    # logger.debug("xrandr --query output :\n%s", xrandr_output)
+    # match output to find all connected outputs
+    connected_outputs = re.findall(r"^([\w\d-]*) connected .*$", xrandr_output, re.MULTILINE)
+    if connected_outputs:
+        logger.debug("Connected outputs: %s", connected_outputs)
+        return connected_outputs
+    return []
+
+
+def _apply_preferred(config):
+    """Apply preferred outputs."""
+    logger = logging.getLogger('_apply_preferred')
+    connected_outputs = get_connected_outputs()
+    # transform the outputs list to a dict (code associated with XrandrConfig)
+    outputs_config = {}
+    for c in config.prefer:
+        outputs_config[c.code] = c
+    # try to apply every preferred output, stop with the first available output configuration
+    for code in config['prefer']:
+        if code not in outputs_config:
+            logger.error("Apply preferred configuration: "
+                "There is no configuration associated to the code '%s'",
+                code)
+        else:
+            cfg_data = outputs_config[code]
+            if cfg_data.available(connected_outputs):
+                logger.debug("Apply preferred output '%s'...", code)
+                cfg_data.execute()
+                return
+    logger.debug("No preferred output can be used.")
+
+
+def _configure_logging(args):
+    """Configure application logging."""
+    log_root = logging.getLogger()
+    if args.verbose:
+        log_root.setLevel(logging.DEBUG)
+        log_handler = logging.StreamHandler(sys.stdout)
+        log_formatter = logging.Formatter(
+            "%(asctime)s:%(levelname)s:%(name)s: %(message)s",
+            '%H:%M:%S')
+    else:
+        log_root.setLevel(logging.INFO)
+        log_handler = logging.StreamHandler(sys.stderr)
+        log_formatter = logging.Formatter(
+            os.path.basename(sys.argv[0]) + ":%(asctime)s:%(levelname)s:%(name)s: %(message)s",
+            '%H:%M:%S')
+    # add to format for debugging :
+    #   function name : %(funcName)s
+    log_handler.setFormatter(log_formatter)
+    log_root.addHandler(log_handler)
+
+
+def main():
+    """Entry point of chrandr."""
+    # command line arguments
+    parser = argparse.ArgumentParser(
+        description="Change Randr screen configuration."
+    )
+    parser.add_argument('--version', action='version', version="%(prog)s " + __version__)
+    parser.add_argument('--verbose', help="verbose output messages", action='store_true')
+    parser.add_argument('--config', help="set the configuration file")
+    parser.add_argument('--prefer', help="apply prefered configuration", action='store_true')
+
+    args = parser.parse_args()
+    # configure logging
+    _configure_logging(args)
+
+    # restore default signal handler on SIGINT
+    # see also : https://bugzilla.gnome.org/show_bug.cgi?id=622084
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    try:
+        if args.config:
+            config = ChrandrConfig(args.config)
+        else:
+            config = ChrandrConfig()
+    except FileNotFoundError as e:
+        sys.stderr.write(sys.argv[0] + ": Failed to open the configuration file : " + str(e) + "\n")
+        sys.exit(1)
+
+    if args.prefer:
+        # "automatic" mode, just apply preferred output
+        _apply_preferred(config)
+    else:
+        # initialize GTK, create and open the window
+        Gtk.init()
+        ui = ChRandrUI(config)
+        # first refresh of availables configurations
+        GObject.idle_add(lambda ui:ui.on_click_refresh(), ui)
+        ui.window.show_all()
+        Gtk.main()
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
+
