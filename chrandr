@@ -172,8 +172,8 @@ class XrandrConfig:
     Fields:
         * code (str): Configuration code
         * title (str): Configuration title (used in the radio button)
-        * ports (list of str): List of xrandr ports, ie ['VGA', 'HDMI']
-        * commands (list of str): List of commands to execute
+        * ports (str list): List of xrandr ports, ie ['VGA', 'HDMI']
+        * commands (str list): List of commands to execute
         * widget (Gtk.RadioButton): Gtk button, None after constructor
     """
 
@@ -208,7 +208,9 @@ class XrandrConfig:
         return True
 
     def execute(self):
-        """Execute all commands associated with this configuration."""
+        """
+        Execute all commands associated with this configuration.
+        """
         try:
             for cmd in self.commands:
                 self.logger.debug("Executing command: %s", cmd)
@@ -216,6 +218,7 @@ class XrandrConfig:
                     universal_newlines=True, shell=True)
         except subprocess.CalledProcessError as e:
             self.logger.error("xrandr error: %s", e.output, exc_info=True)
+            # TODO ERROR CHECK : re-raise the exception
 
 
 class ChrandrConfig:
@@ -229,16 +232,24 @@ class ChrandrConfig:
         * randr (XrandrConfig list): List of defined xrandr configurations
     """
 
-    def __init__(self, filename=DEFAULT_CONFIG_FILENAME):
+    def __init__(self):
         """
-        Initialize the configuration.
+        Initialize a configuration.
+        """
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.status_filename = DEFAULT_STATUS_FILENAME
+        self.prefer = []
+        self.randr = []
+
+    def load_from_file(self, filename=DEFAULT_CONFIG_FILENAME):
+        """
+        Load the configuration from a file.
 
         Args:
             filename (str): Filename to load, default to DEFAULT_CONFIG_FILENAME
         Raises:
             FileNotFoundError: If filename cannot be read
         """
-        self.logger = logging.getLogger(self.__class__.__name__)
         filename_expanded = os.path.expanduser(filename)
         if not os.access(filename_expanded, os.R_OK):
             raise FileNotFoundError("Cannot open or read the file: " + filename_expanded)
@@ -270,6 +281,29 @@ class ChrandrConfig:
                 commands = list(filter(None, (x.strip() for x in commands_raw.split(','))))
                 self.randr.append(XrandrConfig(code, title, ports, commands))
         self.logger.debug("%d randr outputs loaded", len(self.randr))
+
+    def get_active_randr(self):
+        """
+        Get the active XrandrConfig configuration.
+
+        The active configuration is found in the status file.
+
+        Returns:
+            XrandrConfig : the active XrandrConfig (found in the configuration),
+            None : if the active XrandrConfig is unknown.
+        """
+        # TODO STATUS : read the status filename, and return the code contained
+        pass
+
+    def set_active_randr(self, randr_config):
+        """
+        Set the active XrandrConfig configuration in status filename.
+
+        Args:
+            randr_config (XrandrConfig): Configuration to set as active
+        """
+        # TODO STATUS : open the status filename, and write the code in param
+        pass
 
 
 class ChRandrUI:
@@ -325,7 +359,10 @@ class ChRandrUI:
         if self.selected_data:
             self.logger.debug("Apply the output code '%s' : %s", self.selected_data.code,
                 self.selected_data.title)
+            # TODO ERROR : encapsulate with try except
             self.selected_data.execute()
+            # TODO STATUS : if execute() succeded, call the active update
+            #     and also change the style of the selected widget
             # reset field and button
             self.selected_data = None
             self._button_apply.set_sensitive(False)
@@ -436,11 +473,12 @@ def main():
     # see also : https://bugzilla.gnome.org/show_bug.cgi?id=622084
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
+    config = ChrandrConfig()
     try:
         if args.config:
-            config = ChrandrConfig(args.config)
-        else:
-            config = ChrandrConfig()
+            config.load_from_file(args.config)
+        else: # else load default filename
+            config.load_from_file()
     except FileNotFoundError as e:
         sys.stderr.write(sys.argv[0] + ": Failed to open the configuration file : " + str(e) + "\n")
         sys.exit(1)
