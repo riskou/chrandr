@@ -253,8 +253,9 @@ class ChrandrConfig:
         """
         # example configuration
         title = 'This is an chrandr configuration example'
-        ports = [ '' ]
-        commands = [ "xmessage \"You've launch the example configuration :)\"" ]
+        ports = []
+        commands = [ "xmessage \"You've launch the example configuration :)\"",
+            "echo \"Another command of the example\"" ]
         self.randr.append(XrandrConfig('example', title, ports, commands))
         self.logger.debug("Configuration created")
         # save the newly configuration
