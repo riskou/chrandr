@@ -244,8 +244,6 @@ class ChrandrConfig:
         self.status_filename = os.path.expanduser(DEFAULT_STATUS_FILENAME)
         self.prefer = []
         self.randr = []
-        self._config_parser = configparser.ConfigParser()
-        self._config_parser.add_section('chrandr')
 
     def create(self):
         """
@@ -271,29 +269,31 @@ class ChrandrConfig:
         if not os.access(self.filename, os.R_OK):
             raise FileNotFoundError("Cannot open or read the file: " + self.filename)
         self.logger.debug("Loading the configuration file : %s", self.filename)
-        self._config_parser.read(self.filename, encoding='UTF-8')
+        config = configparser.ConfigParser()
+        config.add_section('chrandr')
+        config.read(self.filename, encoding='UTF-8')
 
-        self.status_filename = os.path.expanduser(self._config_parser.get('chrandr', 'status_file',
+        self.status_filename = os.path.expanduser(config.get('chrandr', 'status_file',
             fallback=DEFAULT_STATUS_FILENAME))
 
         self.prefer = []
         # load preferred configurations
         for i in range(1, 4):
             key = 'prefer{}'.format(i)
-            value = self._config_parser.get('chrandr', key, fallback='')
+            value = config.get('chrandr', key, fallback='')
             if value != '':
                 self.prefer.append(value)
         self.logger.debug("Loaded preferred outputs: %s", self.prefer)
 
         # read all randr configurations
         self.randr = []
-        for code in self._config_parser.sections():
+        for code in config.sections():
             if code != 'chrandr': # ignore general configuration
                 # TODO Check that all items exists in the current section
-                title = self._config_parser.get(code, 'title', fallback=code)
-                ports_raw = self._config_parser.get(code, 'ports')
+                title = config.get(code, 'title', fallback=code)
+                ports_raw = config.get(code, 'ports')
                 ports = list(filter(None, (x.strip() for x in ports_raw.split(','))))
-                commands_raw = self._config_parser.get(code, 'commands', fallback='')
+                commands_raw = config.get(code, 'commands', fallback='')
                 commands = list(filter(None, (x.strip() for x in commands_raw.split(','))))
                 self.randr.append(XrandrConfig(code, title, ports, commands))
                 self.logger.debug("Output %s needs ports: %s", code, pprint.pformat(ports))
@@ -303,20 +303,23 @@ class ChrandrConfig:
         """
         Save the configuration.
         """
+        config = configparser.ConfigParser()
+        config.add_section('chrandr')
+        config.read(self.filename, encoding='UTF-8')
         # set configurations values into the configparser
-        self._config_parser.set('chrandr', 'status_file', self.status_filename)
+        config.set('chrandr', 'status_file', self.status_filename)
         i = 1
         for prefer in self.prefer:
-            self._config_parser.set('chrandr', 'prefer{}'.format(i), prefer)
+            config.set('chrandr', 'prefer{}'.format(i), prefer)
             i = i + 1
         for randr in self.randr:
-            if not self._config_parser.has_section(randr.code):
-                self._config_parser.add_section(randr.code)
-            self._config_parser.set(randr.code, 'title', randr.title)
-            self._config_parser.set(randr.code, 'ports', ','.join(randr.ports))
-            self._config_parser.set(randr.code, 'commands', ',\n'.join(randr.commands))
+            if not config.has_section(randr.code):
+                config.add_section(randr.code)
+            config.set(randr.code, 'title', randr.title)
+            config.set(randr.code, 'ports', ','.join(randr.ports))
+            config.set(randr.code, 'commands', ',\n'.join(randr.commands))
         with open(self.filename, 'w') as configfile:
-            self._config_parser.write(configfile, space_around_delimiters=True)
+            config.write(configfile, space_around_delimiters=True)
         self.logger.debug("Configuration saved")
 
     def get_active_randr(self):
