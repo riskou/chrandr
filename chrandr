@@ -313,6 +313,8 @@ class ChrandrConfig:
     def save(self):
         """
         Save the configuration.
+
+        Important: Due to ConfigParser implementation, all comments are removed when writing the file.
         """
         config = configparser.ConfigParser()
         config.add_section('chrandr')
@@ -337,13 +339,13 @@ class ChrandrConfig:
         """
         Save the current active XrandrConfig configuration in the status file.
 
+        Important: Due to ConfigParser implementation, all comments are removed when writing the file.
+
         Args:
             randr_config (XrandrConfig): Configuration to set as active
         """
         status = configparser.ConfigParser()
         status.add_section('chrandr')
-        # read the status file just to keep existing comments
-        status.read(self.status_filename, encoding='UTF-8')
         if randr_config is None:
             status.set('chrandr', 'active', '')
         else:
