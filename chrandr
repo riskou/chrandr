@@ -321,10 +321,14 @@ class ChrandrConfig:
         config.read(self.filename, encoding='UTF-8')
         # set configurations values into the configparser
         config.set('chrandr', 'status_file', self.status_filename)
-        i = 1
-        for prefer in self.prefer:
-            config.set('chrandr', 'prefer{}'.format(i), prefer)
-            i = i + 1
+        if len(self.prefer) == 0:
+            # if no preferred configuration, add an empty one in the file
+            config.set('chrandr', 'prefer1', '')
+        else:
+            i = 1
+            for prefer in self.prefer:
+                config.set('chrandr', 'prefer{}'.format(i), prefer)
+                i = i + 1
         for randr in self.randr:
             if not config.has_section(randr.code):
                 config.add_section(randr.code)
