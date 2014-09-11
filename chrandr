@@ -348,11 +348,12 @@ class ChrandrConfig:
         status.add_section('chrandr')
         if randr_config is None:
             status.set('chrandr', 'active', '')
+            self.active = None
         else:
             status.set('chrandr', 'active', randr_config.code)
+            self.active = randr_config.code
         with open(self.status_filename, 'w') as statusfile:
             status.write(statusfile, space_around_delimiters=True)
-        self.active = randr_config.code
         self.logger.debug("Active configuration (code %s) saved", self.active)
 
 
