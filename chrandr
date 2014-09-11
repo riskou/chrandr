@@ -481,15 +481,20 @@ def get_connected_outputs():
 
 
 def _apply_preferred(config):
-    """Apply preferred outputs."""
+    """
+    Apply preferred outputs.
+
+    Args:
+        config (ChrandrConfig) : Configuration to apply.
+    """
     logger = logging.getLogger('_apply_preferred')
     connected_outputs = get_connected_outputs()
-    # transform the outputs list to a dict (code associated with XrandrConfig)
+    # transform the outputs list to a dict (code associated to a XrandrConfig)
     outputs_config = {}
-    for c in config.prefer:
-        outputs_config[c.code] = c
+    for cfg in config.randr:
+        outputs_config[cfg.code] = cfg
     # try to apply every preferred output, stop with the first available output configuration
-    for code in config['prefer']:
+    for code in config.prefer:
         if code not in outputs_config:
             logger.error("Apply preferred configuration: "
                 "There is no configuration associated to the code '%s'",
@@ -498,7 +503,9 @@ def _apply_preferred(config):
             cfg_data = outputs_config[code]
             if cfg_data.available(connected_outputs):
                 logger.debug("Apply preferred output '%s'...", code)
+                # TODO ERROR : encapsulate with try except
                 cfg_data.execute()
+                config.save_active_randr(cfg_data)
                 return
     logger.debug("No preferred output can be used.")
 
