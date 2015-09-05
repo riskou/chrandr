@@ -63,6 +63,7 @@ from gi.repository import Gtk
 
 """Default configuration filename in ~/.config/ directory."""
 DEFAULT_CONFIG_FILENAME = '~/.config/chrandr/chrandr.conf'
+# TODO Instead, use xdg lib (/run/user/$UID/chrandr/chrandr), and create directory
 DEFAULT_STATUS_FILENAME = '~/.config/chrandr/chrandr.state'
 
 GLADE_XML_UI = """
