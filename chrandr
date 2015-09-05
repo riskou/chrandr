@@ -6,9 +6,6 @@ chrandr - Change (x)randr screen configuration in a gui.
 
 Let the user to choose between a few list of outputs configurations.
 By default, opens a GUI.
-The --prefer option is an automatic mode, try to use the preferred
-  outputs (try order defined in the configuration).
-
 
 --------------
 Configuration
@@ -22,9 +19,6 @@ Example::
     # general options
     [chrandr]
     status_file = <status filename>
-    prefer1 = <first configuration code to try>
-    prefer2 = <second configuration code code to try>
-    prefer3 = <third configuration code code to try>
 
     # output exemple : the output code is 'vga'
     [vga]
@@ -230,7 +224,6 @@ class ChrandrConfig:
     Fields:
         * filename (str) : Chrandr configuration filename
         * status_filename (str): Chrandr status filename
-        * prefer (str list): List of XrandrConfig codes
         * randr (XrandrConfig list): List of defined xrandr configurations
         * active (str): Current active configuration code
     """
@@ -245,7 +238,6 @@ class ChrandrConfig:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.filename = os.path.expanduser(filename)
         self.status_filename = os.path.expanduser(DEFAULT_STATUS_FILENAME)
-        self.prefer = []
         self.randr = []
         self.active = None
 
@@ -279,14 +271,6 @@ class ChrandrConfig:
 
         self.status_filename = os.path.expanduser(config.get('chrandr', 'status_file',
             fallback=DEFAULT_STATUS_FILENAME))
-        self.prefer = []
-        # load preferred configurations
-        for i in range(1, 4):
-            key = 'prefer{}'.format(i)
-            value = config.get('chrandr', key, fallback='')
-            if value != '':
-                self.prefer.append(value)
-        self.logger.debug("Loaded preferred outputs: %s", self.prefer)
         # read all randr configurations
         self.randr = []
         for code in config.sections():
@@ -322,14 +306,6 @@ class ChrandrConfig:
         config.read(self.filename, encoding='UTF-8')
         # set configurations values into the configparser
         config.set('chrandr', 'status_file', self.status_filename)
-        if len(self.prefer) == 0:
-            # if no preferred configuration, add an empty one in the file
-            config.set('chrandr', 'prefer1', '')
-        else:
-            i = 1
-            for prefer in self.prefer:
-                config.set('chrandr', 'prefer{}'.format(i), prefer)
-                i = i + 1
         for randr in self.randr:
             if not config.has_section(randr.code):
                 config.add_section(randr.code)
@@ -485,36 +461,6 @@ def get_connected_outputs():
     return []
 
 
-def _apply_preferred(config):
-    """
-    Apply preferred outputs.
-
-    Args:
-        config (ChrandrConfig) : Configuration to apply.
-    """
-    logger = logging.getLogger('_apply_preferred')
-    connected_outputs = get_connected_outputs()
-    # transform the outputs list to a dict (code associated to a XrandrConfig)
-    outputs_config = {}
-    for cfg in config.randr:
-        outputs_config[cfg.code] = cfg
-    # try to apply every preferred output, stop with the first available output configuration
-    for code in config.prefer:
-        if code not in outputs_config:
-            logger.error("Apply preferred configuration: "
-                "There is no configuration associated to the code '%s'",
-                code)
-        else:
-            cfg_data = outputs_config[code]
-            if cfg_data.available(connected_outputs):
-                logger.debug("Apply preferred output '%s'...", code)
-                # TODO ERROR : encapsulate with try except
-                cfg_data.execute()
-                config.save_active_randr(cfg_data)
-                return
-    logger.debug("No preferred output can be used.")
-
-
 def _configure_logging(args):
     """Configure application logging."""
     log_root = logging.getLogger()
@@ -545,7 +491,6 @@ def main():
     parser.add_argument('--version', action='version', version="%(prog)s " + __version__)
     parser.add_argument('--verbose', help="verbose output messages", action='store_true')
     parser.add_argument('--config', help="set the configuration file")
-    parser.add_argument('--prefer', help="apply prefered configuration", action='store_true')
 
     args = parser.parse_args()
     # configure logging
@@ -571,17 +516,13 @@ def main():
     #    sys.stderr.write(sys.argv[0] + ": Failed to open the configuration file : " + str(e) + "\n")
     #    sys.exit(1)
 
-    if args.prefer:
-        # "automatic" mode, just apply preferred output
-        _apply_preferred(config)
-    else:
-        # initialize GTK, create and open the window
-        Gtk.init()
-        ui = ChRandrUI(config)
-        # first refresh of availables configurations
-        GObject.idle_add(lambda ui:ui.on_click_refresh(), ui)
-        ui.window.show_all()
-        Gtk.main()
+    # initialize GTK, create and open the window
+    Gtk.init()
+    ui = ChRandrUI(config)
+    # first refresh of availables configurations
+    GObject.idle_add(lambda ui:ui.on_click_refresh(), ui)
+    ui.window.show_all()
+    Gtk.main()
 
     return 0
 
