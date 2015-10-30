@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
-chrandr - Change (x)randr screen configuration in a gui.
+chrandr - Change screen configuration in a gui.
 
 Let the user to choose between a few list of outputs configurations.
 By default, opens a GUI.
@@ -34,10 +33,6 @@ With this configuration exemple, if the user selects this choice,
   the 2 xrandr commands are executed (one by one).
 """
 
-__author__ = "Risk"
-__license__ = "MIT"
-__version__ = "0.1"
-
 import os
 import os.path
 import sys
@@ -52,13 +47,19 @@ import pkg_resources
 import configparser
 import json
 
+import gi
+gi.require_version('Gtk', '3.0')
 from gi.repository import GObject
 from gi.repository import Gtk
 
+import chrandr
+
+# TODO Instead, use xdg lib and create directory
 """Default configuration filename in ~/.config/ directory."""
 DEFAULT_CONFIG_FILENAME = '~/.config/chrandr/chrandr.conf'
-# TODO Instead, use xdg lib (/run/user/$UID/chrandr/chrandr), and create directory
+# TODO Instead, use xdg lib and create directory in /run/user/$UID/chrandr
 DEFAULT_STATUS_FILENAME = '~/.config/chrandr/chrandr.state'
+
 
 GLADE_XML_UI = """
 <interface>
@@ -355,13 +356,13 @@ class ChRandrUI:
         self.config = config
         self.selected_data = None
         builder = Gtk.Builder()
-        # dev mode: load glade file in current directory
-        glade_filename = os.path.join(os.path.dirname(__file__), 'chrandr.glade')
+        # dev mode: load glade file in subdirectory
+        glade_filename = os.path.join(os.path.dirname(__file__), 'ui', 'chrandr.glade')
         if os.path.exists(glade_filename) and self.logger.isEnabledFor(logging.DEBUG):
             # to load glade file using pkg_resources
             # glade_content = pkg_resources.resource_string(__name__, 'chrandr.glade')
             # builder.add_from_string(str(glade_content, encoding='utf-8'))
-            builder.add_from_file('chrandr.glade')
+            builder.add_from_file(glade_filename)
             self.logger.debug("Loading GTK UI from glade file: " + glade_filename)
         else:
             # otherwise load glade using str variable in current file
@@ -425,7 +426,7 @@ class ChRandrUI:
         Gtk callback when refresh button is pressed, method name defined in glade file.
         """
         self.logger.debug("Refresh availables configurations...")
-        connected_outputs = get_connected_outputs()
+        connected_outputs = chrandr.get_connected_outputs()
         # active the fake radio to unselect "reals" radios
         self._fake_radio_button.set_active(True)
         for cfg in self.config.randr:
@@ -445,20 +446,6 @@ class ChRandrUI:
         """Gtk callback when ok button is pressed, method name defined in glade file."""
         self._apply_choice()
         Gtk.main_quit()
-
-
-def get_connected_outputs():
-    """Returns the list of connected outputs."""
-    logger = logging.getLogger('get_connected_outputs')
-    # execute xrandr query command
-    xrandr_output = subprocess.check_output(args=["xrandr", "--query"], universal_newlines=True)
-    # logger.debug("xrandr --query output :\n%s", xrandr_output)
-    # match output to find all connected outputs
-    connected_outputs = re.findall(r"^([\w\d-]*) connected .*$", xrandr_output, re.MULTILINE)
-    if connected_outputs:
-        logger.debug("Connected outputs: %s", connected_outputs)
-        return connected_outputs
-    return []
 
 
 def _configure_logging(args):
@@ -484,11 +471,14 @@ def _configure_logging(args):
 
 def main():
     """Entry point of chrandr."""
+    current_version = pkg_resources.get_distribution('chrandr').version
+    if current_version is None:
+        current_version = 'dev'
     # command line arguments
     parser = argparse.ArgumentParser(
-        description="Change Randr screen configuration."
+        description="Change screen configuration."
     )
-    parser.add_argument('--version', action='version', version="%(prog)s " + __version__)
+    parser.add_argument('--version', action='version', version="%(prog)s " + current_version)
     parser.add_argument('--verbose', help="verbose output messages", action='store_true')
     parser.add_argument('--config', help="set the configuration file")
 
@@ -523,10 +513,4 @@ def main():
     GObject.idle_add(lambda ui:ui.on_click_refresh(), ui)
     ui.window.show_all()
     Gtk.main()
-
-    return 0
-
-
-if __name__ == '__main__':
-    sys.exit(main())
 
