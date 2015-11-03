@@ -61,107 +61,6 @@ DEFAULT_CONFIG_FILENAME = '~/.config/chrandr/chrandr.conf'
 DEFAULT_STATUS_FILENAME = '~/.config/chrandr/chrandr.state'
 
 
-GLADE_XML_UI = """
-<interface>
-  <requires lib="gtk+" version="3.12"/>
-  <object class="GtkWindow" id="window">
-    <property name="title" translatable="yes">ChRandr - Screen configuration</property>
-    <child>
-      <object class="GtkGrid" id="grid">
-        <property name="margin_left">5</property>
-        <property name="margin_right">5</property>
-        <property name="margin_top">5</property>
-        <property name="margin_bottom">5</property>
-        <child>
-          <object class="GtkLabel" id="label">
-            <property name="label" translatable="yes">Veuillez sélectionner la configuration Randr souhaitée.</property>
-          </object>
-          <packing>
-            <property name="left_attach">0</property>
-            <property name="top_attach">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButtonBox" id="buttonbox">
-            <property name="spacing">5</property>
-            <property name="layout_style">spread</property>
-            <child>
-              <object class="GtkButton" id="button_cancel">
-                <property name="label">gtk-cancel</property>
-                <property name="has_focus">True</property>
-                <property name="is_focus">True</property>
-                <property name="use_stock">True</property>
-                <signal name="clicked" handler="on_click_cancel" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button_refresh">
-                <property name="label">gtk-refresh</property>
-                <property name="use_stock">True</property>
-                <signal name="clicked" handler="on_click_refresh" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button_apply">
-                <property name="label">gtk-apply</property>
-                <property name="sensitive">False</property>
-                <property name="use_stock">True</property>
-                <signal name="clicked" handler="on_click_apply" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button_ok">
-                <property name="label">gtk-ok</property>
-                <property name="use_stock">True</property>
-                <signal name="clicked" handler="on_click_ok" swapped="no"/>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="position">3</property>
-              </packing>
-            </child>
-          </object>
-          <packing>
-            <property name="left_attach">0</property>
-            <property name="top_attach">2</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkBox" id="box_radio">
-            <property name="margin_left">5</property>
-            <property name="margin_right">5</property>
-            <property name="hexpand">True</property>
-            <property name="vexpand">True</property>
-            <property name="orientation">vertical</property>
-          </object>
-          <packing>
-            <property name="left_attach">0</property>
-            <property name="top_attach">1</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-  </object>
-</interface>
-"""
-
-
 class XrandrConfig:
     """
     Represents a XRandR configuration.
@@ -356,18 +255,11 @@ class ChRandrUI:
         self.config = config
         self.selected_data = None
         builder = Gtk.Builder()
-        # dev mode: load glade file in subdirectory
-        glade_filename = os.path.join(os.path.dirname(__file__), 'ui', 'chrandr.glade')
-        if os.path.exists(glade_filename) and self.logger.isEnabledFor(logging.DEBUG):
-            # to load glade file using pkg_resources
-            # glade_content = pkg_resources.resource_string(__name__, 'chrandr.glade')
-            # builder.add_from_string(str(glade_content, encoding='utf-8'))
-            builder.add_from_file(glade_filename)
-            self.logger.debug("Loading GTK UI from glade file: " + glade_filename)
-        else:
-            # otherwise load glade using str variable in current file
-            builder.add_from_string(GLADE_XML_UI)
-            self.logger.debug("Loading GTK UI from str variable: " + glade_filename)
+        # load glade file using pkg_resources
+        glade_path = os.path.join('ui', 'simple_gui.glade')
+        glade_content = pkg_resources.resource_string(__name__, glade_path)
+        builder.add_from_string(str(glade_content, encoding='utf-8'))
+        self.logger.debug("Loading GTK UI from pkg resource")
         self.window = builder.get_object('window')
         self._box_choices = builder.get_object('box_radio')
         self._button_apply = builder.get_object('button_apply')
