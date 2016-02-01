@@ -1,36 +1,8 @@
 # -*- coding: utf-8 -*-
-
 """
-chrandr - Change screen configuration in a gui.
+chrandr - Very simple gui.
 
-Let the user to choose between a few list of outputs configurations.
-By default, opens a GUI.
-
---------------
-Configuration
---------------
-* By default, stored in ~/.config/chrandr/chrandr.conf
-* ini like format
-* Outputs configuration must be written by hand.
-  Use xrandr command to list ports and to test commands.
-
-Example::
-    # general options
-    [chrandr]
-    status_file = <status filename>
-
-    # output exemple : the output code is 'vga'
-    [vga]
-    # text shown on the radio button
-    title = Use only VGA
-    # list (comma separated) of ports needed to be connected
-    ports = VGA-1
-    # list (comma separated) of shell commands
-    commands : xrandr --output LVDS-1 --off --output VGA-1 --auto,
-        amixer set Master unmute
-
-With this configuration exemple, if the user selects this choice,
-  the 2 xrandr commands are executed (one by one).
+Let the user to choose randr configuration in a radio button list.
 """
 
 import os
@@ -44,40 +16,46 @@ import re
 import pprint
 import pkg_resources
 
-import configparser
-import json
-
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import GObject
 from gi.repository import Gtk
 
-import chrandr
+import chrandr.utils
+import chrandr.config
 from chrandr.config import ChrandrConfig
 
 
-class ChRandrUI:
+class ChRandrSimpleUI:
     """
-    The chrandr GTK user interface.
+    A very simple gui for chrandr.
 
     Fields:
         * config (ChrandrConfig) : Configuration used in the UI
-        * selected_data (XrandrConfig) : Selected configuration,
-          could be None
+        * widgets (tuple list (gtk widget, RandrConfig)) :
+            Widgets list with associated config
+        * selected_data (RandrConfig) : Selected configuration,
+            could be None
         * window (Gtk.Window) : The GTK Window
     """
 
     def __init__(self, config):
-        """Constructor with the list of XrandrConfig configurations."""
-        self.logger = logging.getLogger(self.__class__.__name__)
+        """
+        Constructor with the configuration.
+
+        Args:
+            * config (ChrandrConfig) : Configuration to use
+        """
+        self._logger = logging.getLogger(self.__class__.__name__)
         self.config = config
+        self.widgets = []
         self.selected_data = None
         builder = Gtk.Builder()
         # load glade file using pkg_resources
         glade_path = os.path.join('ui', 'simple_gui.glade')
         glade_content = pkg_resources.resource_string(__name__, glade_path)
         builder.add_from_string(str(glade_content, encoding='utf-8'))
-        self.logger.debug("Loading GTK UI from pkg resource")
+        self._logger.debug("Loading GTK UI from pkg resource")
         self.window = builder.get_object('window')
         self._box_choices = builder.get_object('box_radio')
         self._button_apply = builder.get_object('button_apply')
@@ -94,16 +72,16 @@ class ChRandrUI:
         for cfg in self.config.randr:
             button = Gtk.RadioButton.new_with_label_from_widget(but, cfg.title)
             button.connect('toggled', self.on_select_choice, cfg)
-            cfg.widget = button
+            self.widgets.append((button, cfg))
             self._box_choices.pack_start(button, True, True, 2)
 
     def _apply_choice(self):
         """Execute commands associated with the selected choice."""
         if self.selected_data:
-            self.logger.debug("Apply the output code '%s' : %s", self.selected_data.code,
+            self._logger.debug("Apply the output code '%s' : %s", self.selected_data.code,
                 self.selected_data.title)
             # TODO ERROR : encapsulate with try except
-            self.selected_data.execute()
+            chrandr.utils.execute_commands(self.selected_data.commands)
             # update the active configuration in the status file
             self.config.save_active_randr(self.selected_data)
             # reset field and button
@@ -119,7 +97,7 @@ class ChRandrUI:
             cfg_data (XrandrConfig): the randr configuration associated with the radio button
         """
         if widget.get_active():
-            self.logger.debug("Output code '%s' (%s) is selected", cfg_data.code, cfg_data.title)
+            self._logger.debug("Output code '%s' (%s) is selected", cfg_data.code, cfg_data.title)
             self.selected_data = cfg_data
             self._button_apply.set_sensitive(True)
         else:
@@ -135,15 +113,20 @@ class ChRandrUI:
         Refresh UI with availables configurations or not.
         Gtk callback when refresh button is pressed, method name defined in glade file.
         """
-        self.logger.debug("Refresh availables configurations...")
-        connected_outputs = chrandr.get_connected_outputs()
+        self._logger.debug("Refresh availables configurations...")
+        connected_outputs = chrandr.utils.get_connected_outputs()
         # active the fake radio to unselect "reals" radios
         self._fake_radio_button.set_active(True)
-        for cfg in self.config.randr:
-            cfg.widget.set_sensitive(cfg.available(connected_outputs))
-            if self.config.active is not None and cfg.code == self.config.active:
+        for (widget, cfg) in self.widgets:
+            widget.set_sensitive(cfg.available(connected_outputs))
+            # no active configuration => select the default (from configuration file)
+            if self.config.active is None and cfg.code == self.config.default:
                 # note: it calls on_select_choice()
-                cfg.widget.set_active(True)
+                widget.set_active(True)
+            # else select the active configuration
+            elif cfg.code == self.config.active:
+                # note: it calls on_select_choice()
+                widget.set_active(True)
         # reset fields set by on_select_choice()
         self.selected_data = None
         self._button_apply.set_sensitive(False)
@@ -190,7 +173,8 @@ def main():
     )
     parser.add_argument('--version', action='version', version="%(prog)s " + current_version)
     parser.add_argument('--verbose', help="verbose output messages", action='store_true')
-    parser.add_argument('--config', help="set the configuration file")
+    parser.add_argument('--config', help="set the configuration file",
+        default=chrandr.config.DEFAULT_CONFIG_FILENAME)
 
     args = parser.parse_args()
     # configure logging
@@ -201,24 +185,20 @@ def main():
     # see also : https://bugzilla.gnome.org/show_bug.cgi?id=622084
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    if args.config:
-        config = ChrandrConfig(args.config)
-    else: # else load default filename
-        config = ChrandrConfig()
-
-    if not os.access(config.filename, os.R_OK):
-        logger.info("No configuration file, creating the default...")
-        # TODO set a flag into the UI to popup an information dialog
-        config.create()
-    else:
+    config = ChrandrConfig(args.config)
+    try:
+        if not os.access(config.filename, os.R_OK):
+            logger.info("No configuration file, creating the default...")
+            # TODO set a flag into the UI to popup an information dialog
+            config.create_default_configuration(config.filename)
         config.load()
-    #except FileNotFoundError as e:
-    #    sys.stderr.write(sys.argv[0] + ": Failed to open the configuration file : " + str(e) + "\n")
-    #    sys.exit(1)
+    except FileNotFoundError as e:
+        sys.stderr.write(sys.argv[0] + ": Failed to open the configuration file : " + str(e) + "\n")
+        sys.exit(1)
 
     # initialize GTK, create and open the window
     Gtk.init()
-    ui = ChRandrUI(config)
+    ui = ChRandrSimpleUI(config)
     # first refresh of availables configurations
     GObject.idle_add(lambda ui:ui.on_click_refresh(), ui)
     ui.window.show_all()

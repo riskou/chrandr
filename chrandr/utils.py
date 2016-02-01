@@ -9,7 +9,23 @@ import sys
 import logging
 import pprint
 import subprocess
+import re
+import pprint
+import pkg_resources
 
+
+def get_connected_outputs():
+    """Returns the list of connected outputs."""
+    logger = logging.getLogger('get_connected_outputs')
+    # execute xrandr query command
+    xrandr_output = subprocess.check_output(args=["xrandr", "--query"], universal_newlines=True)
+    # logger.debug("xrandr --query output :\n%s", xrandr_output)
+    # match output to find all connected outputs
+    connected_outputs = re.findall(r"^([\w\d-]*) connected .*$", xrandr_output, re.MULTILINE)
+    if connected_outputs:
+        logger.debug("Connected outputs: %s", connected_outputs)
+        return connected_outputs
+    return []
 
 ##
 ## DEV :
@@ -29,7 +45,7 @@ def execute_commands(commands):
         TODO : If a command fails.
             The exception ontains command line and execution output.
     """
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger('execute_commands')
     try:
         for cmd in commands:
             logger.debug("Executing command: %s", cmd)
