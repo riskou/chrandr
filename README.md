@@ -33,7 +33,7 @@ $ cd chrandr/
 $ python3 setup.py install
 ```
 - Execute `chrandr`.
-- Modify the created configuration file : see [Configuration](#Configuration).
+- Modify the created configuration file : see [Configuration](#configuration).
 
 ## Documentation
 
