@@ -14,8 +14,33 @@ import configparser
 # TODO Instead, use xdg lib and create directory
 """Default configuration filename in ~/.config/ directory."""
 DEFAULT_CONFIG_FILENAME = '~/.config/chrandr/chrandr.conf'
-# TODO Instead, use xdg lib and create directory in /run/user/$UID/chrandr
-DEFAULT_STATUS_FILENAME = '~/.config/chrandr/chrandr.state'
+
+
+def _get_status_filename():
+    """
+    Get the status filename.
+    Filename generated from xdg module, in $XDG_RUNTIME_DIR or in /tmp (in this order).
+    """
+    logger = logging.getLogger('._get_status_filename')
+    status_basename = 'chrandr.state'
+    runtime_dir = None
+    try:
+        from xdg import BaseDirectory
+        runtime_dir = BaseDirectory.get_runtime_dir()
+    except ImportError:
+        logger.info("xdg module not found")
+        runtime_dir = os.getenv('XDG_RUNTIME_DIR')
+    except KeyError:
+        pass
+    if runtime_dir is None:
+        logger.debug("No environment variable XDG_RUNTIME_DIR")
+        # no runtime dir, use /tmp
+        import tempfile
+        runtime_dir = tempfile.gettempdir()
+        status_basename = 'chrandr.' + str(os.getuid()) + '.state'
+    filename = os.path.join(runtime_dir, status_basename)
+    logger.debug("Status filename: %s", filename)
+    return filename
 
 
 class RandrConfig:
@@ -81,7 +106,7 @@ class ChrandrConfig:
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self.filename = os.path.expanduser(filename)
-        self.status_filename = os.path.expanduser(DEFAULT_STATUS_FILENAME)
+        self.status_filename = _get_status_filename()
         self.default = None
         self.fallback = None
         self.randr = []
@@ -122,8 +147,6 @@ class ChrandrConfig:
         config.read(self.filename, encoding='UTF-8')
 
         # general options
-        self.status_filename = os.path.expanduser(config.get('general', 'status_file',
-            fallback=os.path.expanduser(DEFAULT_STATUS_FILENAME)))
         self.default = config.get('general', 'default', fallback=None)
         self.fallback = self._load_randr(config, 'fallback')
         # read all randr configurations
@@ -155,7 +178,6 @@ class ChrandrConfig:
         config.add_section('fallback')
         config.read(self.filename, encoding='UTF-8')
         # set configurations values into the configparser
-        config.set('general', 'status_file', self.status_filename)
         config.set('general', 'default', self.default)
         self._save_randr(config, self.fallback)
         for i in self.randr:
