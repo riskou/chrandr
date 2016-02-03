@@ -22,7 +22,8 @@ You see the result : A gui to launch shell commands, wow it's a revolution :)
 - Python 3
 - GTK 3 (3.12 or more)
 - xrandr
-- Python module gi (gobject introspection or python3-gi)
+- `gi` module (gobject introspection or python3-gi)
+- Optionnaly `xdg` module.
 
 ## Installation
 
@@ -48,7 +49,6 @@ An example is available in [docs/chrandr.conf](docs/chrandr.conf).
 
 ## TODO list
 
-- Use xdg module to get ~/.config/ directory.
 - Get command output and check return code.
 - Use Xlib module to get randr informations instead of executing xrandr.
 - Better gui.

@@ -11,9 +11,15 @@ import pprint
 import configparser
 
 
-# TODO Instead, use xdg lib and create directory
-"""Default configuration filename in ~/.config/ directory."""
-DEFAULT_CONFIG_FILENAME = '~/.config/chrandr/chrandr.conf'
+# Generate the default configuration filename
+try:
+    from xdg import BaseDirectory
+    _config_dir = BaseDirectory.save_config_path('chrandr')
+except ImportError:
+    logger = logging.getLogger(__name__)
+    logger.info("xdg module not found")
+    _config_dir = os.path.expanduser(os.path.join('~', '.config', 'chrandr'))
+DEFAULT_CONFIGURATION_FILENAME = os.path.join(_config_dir, 'chrandr.conf')
 
 
 def _get_status_filename():
@@ -21,7 +27,7 @@ def _get_status_filename():
     Get the status filename.
     Filename generated from xdg module, in $XDG_RUNTIME_DIR or in /tmp (in this order).
     """
-    logger = logging.getLogger('._get_status_filename')
+    logger = logging.getLogger('_get_status_filename')
     status_basename = 'chrandr.state'
     runtime_dir = None
     try:
@@ -54,7 +60,7 @@ class RandrConfig:
         * commands (str list): List of commands to execute
     """
 
-    def __init__(self, code=None, title=None, ports=[], commands=[]):
+    def __init__(self, code, title=None, ports=None, commands=None):
         """Constructs a xrandr configuration."""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.code = code
@@ -77,9 +83,10 @@ class RandrConfig:
             True if this configuration is available,
             False otheriwse.
         """
-        for port in self.ports:
-            if port not in connected_outputs:
-                return False
+        if self.ports:
+            for port in self.ports:
+                if port not in connected_outputs:
+                    return False
         return True
 
 
@@ -114,22 +121,24 @@ class ChrandrConfig:
 
     def _load_randr(self, config, section_name):
         """Load a RandrConfig from the ConfigParser in argument and return it."""
-        ret = RandrConfig()
-        ret.code = section_name
-        ret.title = config.get(section_name, 'title', fallback=section_name)
-        ports_raw = config.get(section_name, 'ports', fallback='')
-        ret.ports = list(filter(None, (x.strip() for x in ports_raw.split(','))))
+        title = config.get(section_name, 'title', fallback=section_name)
+        ports_raw = config.get(section_name, 'ports', fallback=None)
+        ports = None
+        if ports_raw is not None:
+            ports = list(filter(None, (x.strip() for x in ports_raw.split(','))))
         commands_raw = config.get(section_name, 'commands', fallback='')
-        ret.commands = list(filter(None, (x.strip() for x in commands_raw.split('\n'))))
-        return ret
+        commands = list(filter(None, (x.strip() for x in commands_raw.split('\n'))))
+        return RandrConfig(section_name, title, ports, commands)
 
-    def _save_randr(self, config, randr_config):
-        """Save a RandrConfig into the ConfigParser argument."""
-        if not config.has_section(randr_config.code):
-            config.add_section(randr_config.code)
-        config.set(randr_config.code, 'title', randr_config.title)
-        config.set(randr_config.code, 'ports', ','.join(randr_config.ports))
-        config.set(randr_config.code, 'commands', '\n'.join(randr_config.commands))
+    def _save_randr(self, config, rc):
+        """Save a RandrConfig (rc) into the ConfigParser (config)."""
+        if rc.code not in config:
+            config[rc.code] = {}
+        if rc.title is not None:
+            config[rc.code]['title'] = rc.title
+        if rc.ports is not None:
+            config[rc.code]['ports'] = ','.join(rc.ports)
+        config[rc.code]['commands'] = '\n'.join(rc.commands)
 
     def load(self):
         """
@@ -142,13 +151,13 @@ class ChrandrConfig:
             raise FileNotFoundError("Cannot open or read the file: " + self.filename)
         self._logger.debug("Loading the configuration file : %s", self.filename)
         config = configparser.ConfigParser()
-        config.add_section('general')
-        config.add_section('fallback')
+        config['general'] = {}
         config.read(self.filename, encoding='UTF-8')
 
         # general options
         self.default = config.get('general', 'default', fallback=None)
-        self.fallback = self._load_randr(config, 'fallback')
+        if 'fallback' in config:
+            self.fallback = self._load_randr(config, 'fallback')
         # read all randr configurations
         self.randr = []
         for code in config.sections():
@@ -160,8 +169,8 @@ class ChrandrConfig:
         self._logger.debug("Loading status file in %s", self.status_filename)
         status = configparser.ConfigParser()
         status.read(self.status_filename, encoding='UTF-8')
-        if status.has_option('chrandr', 'active'):
-            self.active = status.get('chrandr', 'active')
+        if 'chrandr' in status and 'active' in status['chrandr']:
+            self.active = status['chrandr']['active']
         else:
             # state file does not exist (or does not contain active value) => use default
             self.active = self.default
@@ -174,12 +183,13 @@ class ChrandrConfig:
         Important: Due to ConfigParser implementation, all comments are removed when writing the file.
         """
         config = configparser.ConfigParser()
-        config.add_section('general')
-        config.add_section('fallback')
+        config['general'] = {}
         config.read(self.filename, encoding='UTF-8')
         # set configurations values into the configparser
-        config.set('general', 'default', self.default)
-        self._save_randr(config, self.fallback)
+        if self.default is not None:
+            config['general']['default'] = self.default
+        if self.fallback is not None:
+            self._save_randr(config, self.fallback)
         for i in self.randr:
             self._save_randr(config, i)
         with open(self.filename, 'w') as fd:
@@ -196,27 +206,33 @@ class ChrandrConfig:
             * randr_config (RandrConfig): Configuration to set as active
         """
         status = configparser.ConfigParser()
-        status.add_section('chrandr')
+        status['chrandr'] = {}
         if randr_config is None:
-            status.set('chrandr', 'active', '')
+            status['chrandr']['active'] = ''
             self.active = None
         else:
-            status.set('chrandr', 'active', randr_config.code)
+            status['chrandr']['active'] = randr_config.code
             self.active = randr_config.code
         with open(self.status_filename, 'w') as statusfile:
             status.write(statusfile, space_around_delimiters=True)
-        self._logger.debug("Active configuration (code %s) saved", self.active)
+        self._logger.debug("Active configuration (code '%s') saved", self.active)
 
 
-def create_default_configuration(self, filename):
+def create_default_configuration(filename):
     """
     Create the default configuration.
 
     Args;
-        * filename (str) : Filename of the configuration
+        * filename (str) : Filename to create.
     """
+    logger = logging.getLogger('create_default_configuration')
+    config_dir = os.path.dirname(filename)
+    if not os.path.isdir(config_dir):
+        logger.debug("Create configuration directory %s", config_dir)
+        os.makedirs(config_dir, 0o700)
     cfg = ChrandrConfig(filename)
     cfg.default = 'example'
+    cfg.fallback = RandrConfig('fallback', commands=[])
     # example configuration
     title = 'This is an chrandr configuration example'
     ports = []

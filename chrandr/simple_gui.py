@@ -151,7 +151,7 @@ def _configure_logging(args):
             "%(asctime)s:%(levelname)s:%(name)s: %(message)s",
             '%H:%M:%S')
     else:
-        log_root.setLevel(logging.INFO)
+        log_root.setLevel(logging.WARN)
         log_handler = logging.StreamHandler(sys.stderr)
         log_formatter = logging.Formatter(
             os.path.basename(sys.argv[0]) + ":%(asctime)s:%(levelname)s:%(name)s: %(message)s",
@@ -173,8 +173,7 @@ def main():
     )
     parser.add_argument('--version', action='version', version="%(prog)s " + current_version)
     parser.add_argument('--verbose', help="verbose output messages", action='store_true')
-    parser.add_argument('--config', help="set the configuration file",
-        default=chrandr.config.DEFAULT_CONFIG_FILENAME)
+    parser.add_argument('--config', help="set the configuration file")
 
     args = parser.parse_args()
     # configure logging
@@ -185,12 +184,21 @@ def main():
     # see also : https://bugzilla.gnome.org/show_bug.cgi?id=622084
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    config = ChrandrConfig(args.config)
+    if args.config is None:
+        config_filename = chrandr.config.DEFAULT_CONFIGURATION_FILENAME
+        if not os.path.exists(config_filename):
+            logger.info("Create default configuration file: %s", config_filename)
+            try:
+                chrandr.config.create_default_configuration(config_filename)
+            except Exception as e:
+                logger.error("Failed to create default configuration", exc_info=True)
+                sys.stderr.write(sys.argv[0] + ": Failed to create the configuration file : " + str(e) + "\n")
+                sys.exit(1)
+    else:
+        config_filename = os.path.expanduser(args.config)
+
+    config = ChrandrConfig(config_filename)
     try:
-        if not os.access(config.filename, os.R_OK):
-            logger.info("No configuration file, creating the default...")
-            # TODO set a flag into the UI to popup an information dialog
-            config.create_default_configuration(config.filename)
         config.load()
     except FileNotFoundError as e:
         sys.stderr.write(sys.argv[0] + ": Failed to open the configuration file : " + str(e) + "\n")
