@@ -1,6 +1,6 @@
 # chrandr
 
-Change (x)randr screen configuration in a gui.
+Change xrandr screen configuration in a gui.
 
 Currently in (slow) development.
 
@@ -13,7 +13,7 @@ Currently in (slow) development.
 ##### History (my life)
 
 To activate HDMI, I used shell scripts to run xrandr/amixer/pulseaudio commands. It worked...
-Later, to learn python, I decided to create a gui to launch these commands.
+Later, and to learn python, I decided to create a gui to launch these commands.
 
 You see the result : A gui to launch shell commands, wow it's a revolution :)
 
@@ -21,9 +21,9 @@ You see the result : A gui to launch shell commands, wow it's a revolution :)
 
 - Python 3
 - GTK 3 (3.12 or more)
-- xrandr
+- `xrandr` shell command
 - `gi` module (gobject introspection or python3-gi)
-- Optionnaly `xdg` module.
+- Optionnaly `xdg` module
 
 ## Installation
 
@@ -46,13 +46,6 @@ Configuration filename could be set with `chrandr --config <filename>`.
 By default `~/.config/chrandr/chrandr.conf`.
 
 An example is available in [docs/chrandr.conf](docs/chrandr.conf).
-
-## TODO list
-
-- Get command output and check return code.
-- Use Xlib module to get randr informations instead of executing xrandr.
-- Better gui.
-- Configuration gui.
 
 ## License
 
