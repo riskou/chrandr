@@ -15,7 +15,7 @@ Currently in (slow) development.
 To activate HDMI, I used shell scripts to run xrandr/amixer/pulseaudio commands. It worked...
 Later, and to learn python, I decided to create a gui to launch these commands.
 
-You see the result : A gui to launch shell commands, wow it's a revolution :)
+You see the result : A gui to launch shell commands, wow it's a revolution :smile:
 
 ## Dependencies
 
