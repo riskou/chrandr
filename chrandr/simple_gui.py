@@ -119,12 +119,8 @@ class ChRandrSimpleUI:
         self._fake_radio_button.set_active(True)
         for (widget, cfg) in self.widgets:
             widget.set_sensitive(cfg.available(connected_outputs))
-            # no active configuration => select the default (from configuration file)
-            if self.config.active is None and cfg.code == self.config.default:
-                # note: it calls on_select_choice()
-                widget.set_active(True)
-            # else select the active configuration
-            elif cfg.code == self.config.active:
+            # select the active configuration
+            if self.config.active is not None and cfg.code == self.config.active:
                 # note: it calls on_select_choice()
                 widget.set_active(True)
         # reset fields set by on_select_choice()
