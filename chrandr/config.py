@@ -114,7 +114,7 @@ class ChrandrConfig:
         self._logger = logging.getLogger(self.__class__.__name__)
         self.filename = os.path.expanduser(filename)
         self.status_filename = _get_status_filename()
-        self.default = None
+        self.initial = None
         self.fallback = None
         self.randr = []
         self.active = None
@@ -155,7 +155,7 @@ class ChrandrConfig:
         config.read(self.filename, encoding='UTF-8')
 
         # general options
-        self.default = config.get('general', 'default', fallback=None)
+        self.initial = config.get('general', 'initial', fallback=None)
         if 'fallback' in config:
             self.fallback = self._load_randr(config, 'fallback')
         # read all randr configurations
@@ -172,8 +172,9 @@ class ChrandrConfig:
         if 'chrandr' in status and 'active' in status['chrandr']:
             self.active = status['chrandr']['active']
         else:
-            # state file does not exist (or does not contain active value) => use default
-            self.active = self.default
+            self._logger.debug("No status file or no active found")
+            # state file does not exist (or does not contain active value) => use initial
+            self.active = self.initial
         self._logger.debug("Active configuration code is : %s", self.active)
 
     def save(self):
@@ -186,8 +187,8 @@ class ChrandrConfig:
         config['general'] = {}
         config.read(self.filename, encoding='UTF-8')
         # set configurations values into the configparser
-        if self.default is not None:
-            config['general']['default'] = self.default
+        if self.initial is not None:
+            config['general']['initial'] = self.initial
         if self.fallback is not None:
             self._save_randr(config, self.fallback)
         for i in self.randr:
@@ -231,7 +232,7 @@ def create_default_configuration(filename):
         logger.debug("Create configuration directory %s", config_dir)
         os.makedirs(config_dir, 0o700)
     cfg = ChrandrConfig(filename)
-    cfg.default = 'example'
+    cfg.initial = 'example'
     cfg.fallback = RandrConfig('fallback', commands=[])
     # example configuration
     title = 'This is an chrandr configuration example'
