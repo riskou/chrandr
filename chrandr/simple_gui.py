@@ -76,17 +76,29 @@ class ChRandrSimpleUI:
             self._box_choices.pack_start(button, True, True, 2)
 
     def _apply_choice(self):
-        """Execute commands associated with the selected choice."""
+        """
+        Execute commands associated with the selected choice.
+
+        Returns:
+            False if an error occurs,
+            True otherwise
+        """
         if self.selected_data:
             self._logger.debug("Apply the output code '%s' : %s", self.selected_data.code,
                 self.selected_data.title)
-            # TODO ERROR : encapsulate with try except
-            chrandr.utils.execute_commands(self.selected_data.commands)
-            # update the active configuration in the status file
-            self.config.save_active_randr(self.selected_data)
-            # reset field and button
-            self.selected_data = None
-            self._button_apply.set_sensitive(False)
+            try:
+                chrandr.utils.execute_commands(self.selected_data.commands)
+            except chrandr.utils.ProcessException as e:
+                # TODO ERROR : open the error dialog
+                self._logger.debug("Command error...")
+                return False
+            else:
+                # update the active configuration in the status file
+                self.config.save_active_randr(self.selected_data)
+                # reset field and button
+                self.selected_data = None
+                self._button_apply.set_sensitive(False)
+        return True
 
     def on_select_choice(self, widget, cfg_data):
         """
@@ -133,8 +145,8 @@ class ChRandrSimpleUI:
 
     def on_click_ok(self, *args, **kwargs):
         """Gtk callback when ok button is pressed, method name defined in glade file."""
-        self._apply_choice()
-        Gtk.main_quit()
+        if self._apply_choice():
+            Gtk.main_quit()
 
 
 def _configure_logging(args):

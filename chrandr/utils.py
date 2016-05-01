@@ -14,6 +14,15 @@ import pprint
 import pkg_resources
 
 
+class ProcessException(Exception):
+    def __init__(self, cmd, exit_code=None, output=None):
+        self.cmd = cmd
+        self.exit_code = exit_code
+        self.output = output
+    def __str__(self):
+        return str(self.__cause__)
+
+
 def get_connected_outputs():
     """Returns the list of connected outputs."""
     logger = logging.getLogger('get_connected_outputs')
@@ -37,13 +46,12 @@ def get_connected_outputs():
 def execute_commands(commands):
     """
     Execute a list of commands, one by one.
-    Stop if a command fails.
+    Returns on first error, and following commands are not executed.
 
     Args:
         * commands (list of str) : List of commands to execute
     Throws:
-        TODO : If a command fails.
-            The exception ontains command line and execution output.
+        ProcessException : If a command fails.
     """
     logger = logging.getLogger('execute_commands')
     try:
@@ -52,5 +60,5 @@ def execute_commands(commands):
             subprocess.check_output(cmd, stderr=subprocess.STDOUT,
                 universal_newlines=True, shell=True)
     except subprocess.CalledProcessError as e:
-        logger.error("xrandr error: %s", e.output, exc_info=True)
-        # TODO ERROR CHECK : re-raise the exception
+        logger.debug("Command error: %s", e.cmd, exc_info=True)
+        raise ProcessException(e.cmd, e.returncode, e.output) from e
