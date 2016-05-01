@@ -109,7 +109,7 @@ class ChRandrSimpleUI:
             cfg_data (XrandrConfig): the randr configuration associated with the radio button
         """
         if widget.get_active():
-            self._logger.debug("Output code '%s' (%s) is selected", cfg_data.code, cfg_data.title)
+            # self._logger.debug("Output code '%s' is selected", cfg_data.code)
             self.selected_data = cfg_data
             self._button_apply.set_sensitive(True)
         else:
