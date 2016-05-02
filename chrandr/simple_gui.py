@@ -26,6 +26,38 @@ import chrandr.config
 from chrandr.config import ChrandrConfig
 
 
+class ChRandrErrorDialog:
+    """
+    Error dialog with command output
+    """
+    def __init__(self, parent_window):
+        # self._logger = logging.getLogger(self.__class__.__name__)
+        builder = Gtk.Builder()
+        # load glade file using pkg_resources
+        glade_path = os.path.join('ui', 'error_dialog.glade')
+        glade_content = pkg_resources.resource_string(__name__, glade_path)
+        builder.add_from_string(str(glade_content, encoding='utf-8'))
+        self.dialog = builder.get_object('dialog_error')
+        self._entry_command = builder.get_object('entry_command')
+        self._textbuffer_output = builder.get_object('textbuffer_output')
+        # connect callbacks signals
+        builder.connect_signals(self)
+        self.dialog.set_transient_for(parent_window)
+
+    def on_click_close(self, *args, **kwargs):
+        self.dialog.response(Gtk.ResponseType.CLOSE)
+
+    def show(self, command, output=None):
+        self._entry_command.set_text(str(command))
+        if output:
+            self._textbuffer_output.set_text(str(output), -1)
+        else:
+            self._textbuffer_output.set_text("", -1)
+        self.dialog.run()
+        self.dialog.destroy()
+
+
+
 class ChRandrSimpleUI:
     """
     A very simple gui for chrandr.
@@ -89,8 +121,8 @@ class ChRandrSimpleUI:
             try:
                 chrandr.utils.execute_commands(self.selected_data.commands)
             except chrandr.utils.ProcessException as e:
-                # TODO ERROR : open the error dialog
-                self._logger.debug("Command error...")
+                popup = ChRandrErrorDialog(self.window)
+                popup.show(e.cmd, e.output)
                 return False
             else:
                 # update the active configuration in the status file
