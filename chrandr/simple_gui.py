@@ -88,7 +88,7 @@ class ChRandrSimpleUI:
         glade_content = pkg_resources.resource_string(__name__, glade_path)
         builder.add_from_string(str(glade_content, encoding='utf-8'))
         self._logger.debug("Loading GTK UI from pkg resource")
-        self.window = builder.get_object('window')
+        self.window = builder.get_object('chrandr')
         self._box_choices = builder.get_object('box_radio')
         self._button_apply = builder.get_object('button_apply')
         # radio button not shown to the user, permits to unselect all "reals" radios
