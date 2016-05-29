@@ -64,10 +64,6 @@ class ChRandrSimpleUI:
 
     Fields:
         * config (ChrandrConfig) : Configuration used in the UI
-        * widgets (tuple list (gtk widget, RandrConfig)) :
-            Widgets list with associated config
-        * selected_data (RandrConfig) : Selected configuration,
-            could be None
         * window (Gtk.Window) : The GTK Window
     """
 
@@ -80,7 +76,7 @@ class ChRandrSimpleUI:
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self.config = config
-        self.widgets = []
+        self._widgets = []
         builder = Gtk.Builder()
         # load glade file using pkg_resources
         glade_path = os.path.join('ui', 'simple_gui.glade')
@@ -106,7 +102,7 @@ class ChRandrSimpleUI:
         if randr:
             self._logger.debug("Apply the output code '%s' : %s", randr.code,
                 randr.title)
-            for wid in self.widgets:
+            for wid in self._widgets:
                 if wid.get_active() and wid != widget:
                     wid.set_active(False)
             try:
@@ -143,10 +139,10 @@ class ChRandrSimpleUI:
         self._logger.debug("Refresh availables configurations...")
         outputs = chrandr.utils.get_connected_outputs()
         # Destroy previous widgets
-        for wid in self.widgets:
+        for wid in self._widgets:
             wid.destroy()
         self.widgets = []
-        # list(filter(None, (x.strip() for x in ports_raw.split(','))))
+
         availables = filter(lambda r: r.available(outputs), self.config.randr)
         for cfg in availables:
             widget = Gtk.ToggleButton.new_with_label(cfg.title)
@@ -154,7 +150,7 @@ class ChRandrSimpleUI:
             if self.config.active is not None and cfg.code == self.config.active:
                 widget.set_active(True)
             widget.connect('toggled', self.on_select_choice, cfg)
-            self.widgets.append(widget)
+            self._widgets.append(widget)
             self._box_content.pack_start(widget, True, True, 2)
         self._box_content.show_all()
 
@@ -176,7 +172,7 @@ def _configure_logging(args):
         log_root.setLevel(logging.WARN)
         log_handler = logging.StreamHandler(sys.stderr)
         log_formatter = logging.Formatter(
-            os.path.basename(sys.argv[0]) + ":%(asctime)s:%(levelname)s:%(name)s: %(message)s",
+            os.path.basename(sys.argv[0]) + ": %(asctime)s:%(levelname)s:%(name)s: %(message)s",
             '%H:%M:%S')
     # add to format for debugging :
     #   function name : %(funcName)s
