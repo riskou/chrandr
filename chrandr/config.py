@@ -198,7 +198,7 @@ class ChrandrConfig:
         Important: Due to ConfigParser implementation, all comments are removed when writing the file.
 
         Args:
-            * randr_config (RandrConfig): Configuration to set as active
+            * randr_config (RandrConfig): Configuration to set as active, could be None
         """
         status = configparser.ConfigParser()
         status['chrandr'] = {}
