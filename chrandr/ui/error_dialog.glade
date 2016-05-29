@@ -51,7 +51,7 @@ Author: Adrien Gandon
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child internal-child="action_area">
-          <object class="GtkButtonBox" id="dialog-action_area">
+          <object class="GtkButtonBox">
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>
             <child>
@@ -77,12 +77,12 @@ Author: Adrien Gandon
           </packing>
         </child>
         <child>
-          <object class="GtkBox" id="box">
+          <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="orientation">vertical</property>
             <child>
-              <object class="GtkLabel" id="label_title">
+              <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="margin_top">5</property>
@@ -99,7 +99,7 @@ Author: Adrien Gandon
               </packing>
             </child>
             <child>
-              <object class="GtkLabel" id="label_command">
+              <object class="GtkLabel">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="halign">start</property>
@@ -125,7 +125,7 @@ Author: Adrien Gandon
               </packing>
             </child>
             <child>
-              <object class="GtkExpander" id="expander_output">
+              <object class="GtkExpander">
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <child>
@@ -140,7 +140,7 @@ Author: Adrien Gandon
                   </object>
                 </child>
                 <child type="label">
-                  <object class="GtkLabel" id="label_output">
+                  <object class="GtkLabel">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="label" translatable="yes">Sortie de la commande</property>

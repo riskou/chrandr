@@ -81,7 +81,6 @@ class ChRandrSimpleUI:
         self._logger = logging.getLogger(self.__class__.__name__)
         self.config = config
         self.widgets = []
-        self.selected_data = None
         builder = Gtk.Builder()
         # load glade file using pkg_resources
         glade_path = os.path.join('ui', 'simple_gui.glade')
@@ -89,68 +88,52 @@ class ChRandrSimpleUI:
         builder.add_from_string(str(glade_content, encoding='utf-8'))
         self._logger.debug("Loading GTK UI from pkg resource")
         self.window = builder.get_object('chrandr')
-        self._box_choices = builder.get_object('box_radio')
-        self._button_apply = builder.get_object('button_apply')
-        # radio button not shown to the user, permits to unselect all "reals" radios
-        self._fake_radio_button = None
-        self._init_choices()
+        self._box_content = builder.get_object('box_content')
         # connect callbacks signals
         builder.connect_signals(self)
 
-    def _init_choices(self):
-        """Initialize choices list (radio buttons) with all configurations."""
-        self._fake_radio_button = Gtk.RadioButton.new_with_label_from_widget(None, "(fake button)")
-        but = self._fake_radio_button
-        for cfg in self.config.randr:
-            button = Gtk.RadioButton.new_with_label_from_widget(but, cfg.title)
-            button.connect('toggled', self.on_select_choice, cfg)
-            self.widgets.append((button, cfg))
-            self._box_choices.pack_start(button, True, True, 2)
-
-    def _apply_choice(self):
+    def _apply_randr(self, widget, randr):
         """
         Execute commands associated with the selected choice.
 
+        Args:
+            * widget (Gtk.ToggleButton) : Button widget
+            * randr (RandrConfig) : Configuration to apply
         Returns:
             False if an error occurs,
             True otherwise
         """
-        if self.selected_data:
-            self._logger.debug("Apply the output code '%s' : %s", self.selected_data.code,
-                self.selected_data.title)
+        if randr:
+            self._logger.debug("Apply the output code '%s' : %s", randr.code,
+                randr.title)
+            for wid in self.widgets:
+                if wid.get_active() and wid != widget:
+                    wid.set_active(False)
             try:
-                chrandr.utils.execute_commands(self.selected_data.commands)
+                chrandr.utils.execute_commands(randr.commands)
             except chrandr.utils.ProcessException as e:
+                self.config.save_active_randr(None)
+                widget.set_active(False)
+                # display the error
                 popup = ChRandrErrorDialog(self.window)
                 popup.show(e.cmd, e.output)
                 return False
             else:
                 # update the active configuration in the status file
-                self.config.save_active_randr(self.selected_data)
-                # reset field and button
-                self.selected_data = None
-                self._button_apply.set_sensitive(False)
+                self.config.save_active_randr(randr)
         return True
 
     def on_select_choice(self, widget, cfg_data):
         """
-        Gtk callback when a radio button is selected.
+        Gtk callback when a button is clicked.
 
         Args:
-            widget (Gtk.RadioButton): the selected radio button
-            cfg_data (XrandrConfig): the randr configuration associated with the radio button
+            widget (Gtk.ToggleButton): the clicked button
+            cfg_data (XrandrConfig): the randr configuration associated with the button
         """
         if widget.get_active():
             # self._logger.debug("Output code '%s' is selected", cfg_data.code)
-            self.selected_data = cfg_data
-            self._button_apply.set_sensitive(True)
-        else:
-            # maybe not needed, because a radio is unselected only if another is selected
-            self.selected_data = None
-
-    def on_click_cancel(self, *args, **kwargs):
-        """Gtk callback when cancel button is pressed, method name defined in glade file."""
-        Gtk.main_quit()
+            self._apply_randr(widget, cfg_data)
 
     def on_click_refresh(self, *args, **kwargs):
         """
@@ -158,27 +141,26 @@ class ChRandrSimpleUI:
         Gtk callback when refresh button is pressed, method name defined in glade file.
         """
         self._logger.debug("Refresh availables configurations...")
-        connected_outputs = chrandr.utils.get_connected_outputs()
-        # active the fake radio to unselect "reals" radios
-        self._fake_radio_button.set_active(True)
-        for (widget, cfg) in self.widgets:
-            widget.set_sensitive(cfg.available(connected_outputs))
+        outputs = chrandr.utils.get_connected_outputs()
+        # Destroy previous widgets
+        for wid in self.widgets:
+            wid.destroy()
+        self.widgets = []
+        # list(filter(None, (x.strip() for x in ports_raw.split(','))))
+        availables = filter(lambda r: r.available(outputs), self.config.randr)
+        for cfg in availables:
+            widget = Gtk.ToggleButton.new_with_label(cfg.title)
             # select the active configuration
             if self.config.active is not None and cfg.code == self.config.active:
-                # note: it calls on_select_choice()
                 widget.set_active(True)
-        # reset fields set by on_select_choice()
-        self.selected_data = None
-        self._button_apply.set_sensitive(False)
+            widget.connect('toggled', self.on_select_choice, cfg)
+            self.widgets.append(widget)
+            self._box_content.pack_start(widget, True, True, 2)
+        self._box_content.show_all()
 
-    def on_click_apply(self, *args, **kwargs):
-        """Gtk callback when apply button is pressed, method name defined in glade file."""
-        self._apply_choice()
-
-    def on_click_ok(self, *args, **kwargs):
-        """Gtk callback when ok button is pressed, method name defined in glade file."""
-        if self._apply_choice():
-            Gtk.main_quit()
+    def on_click_close(self, *args, **kwargs):
+        """Gtk callback when close button is pressed, method name defined in glade file."""
+        Gtk.main_quit()
 
 
 def _configure_logging(args):
