@@ -48,7 +48,7 @@ setup(
     # install_requires=['gtk>=3'],
 
     package_data={
-        'chrandr/ui': ['*.glade']
+        'chrandr': ['ui/*.glade']
     },
     entry_points = {
         'gui_scripts': [
