@@ -55,18 +55,20 @@ class RandrConfig:
 
     Fields:
         * code (str): Configuration code
-        * title (str): Configuration title (used in the radio button)
+        * title (str): Configuration title used in the button
         * ports (str list): List of xrandr ports, ie ['VGA', 'HDMI']
         * commands (str list): List of commands to execute
+        * icon (str) : Filename icon used in the button
     """
 
-    def __init__(self, code, title=None, ports=None, commands=None):
+    def __init__(self, code, title=None, ports=None, commands=None, icon=None):
         """Constructs a xrandr configuration."""
         self.logger = logging.getLogger(self.__class__.__name__)
         self.code = code
         self.title = title
         self.ports = ports
         self.commands = commands
+        self.icon = icon
 
     def __str__(self):
         return "XrandrConfig(code={})".format(self.code)
@@ -126,7 +128,8 @@ class ChrandrConfig:
             ports = list(filter(None, (x.strip() for x in ports_raw.split(','))))
         commands_raw = config.get(section_name, 'commands', fallback='')
         commands = list(filter(None, (x.strip() for x in commands_raw.split('\n'))))
-        return RandrConfig(section_name, title, ports, commands)
+        icon = config.get(section_name, 'icon', fallback=None)
+        return RandrConfig(section_name, title=title, ports=ports, commands=commands, icon=icon)
 
     def _save_randr(self, config, rc):
         """Save a RandrConfig (rc) into the ConfigParser (config)."""
@@ -137,6 +140,8 @@ class ChrandrConfig:
         if rc.ports:
             config[rc.code]['ports'] = ','.join(rc.ports)
         config[rc.code]['commands'] = '\n'.join(rc.commands)
+        if rc.icon:
+            config[rc.code]['icon'] = rc.icon
 
     def load(self):
         """
@@ -232,6 +237,6 @@ def create_default_configuration(filename):
     ports = []
     commands = [ "xmessage \"You've launch the example configuration :)\"",
         "echo \"Another command of the example\"" ]
-    cfg.randr.append(RandrConfig('example', title, ports, commands))
+    cfg.randr.append(RandrConfig('example', title=title, ports=ports, commands=commands))
     # save the newly configuration
     cfg.save()

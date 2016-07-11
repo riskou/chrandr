@@ -108,19 +108,17 @@ Author: Adrien Gandon
           </packing>
         </child>
         <child>
-          <object class="GtkButtonBox" id="box_content">
+          <object class="GtkBox" id="box_content">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="margin_left">20</property>
-            <property name="margin_right">20</property>
-            <property name="margin_top">20</property>
-            <property name="margin_bottom">20</property>
+            <property name="margin_left">10</property>
+            <property name="margin_right">10</property>
+            <property name="margin_top">15</property>
+            <property name="margin_bottom">15</property>
             <property name="hexpand">True</property>
             <property name="vexpand">True</property>
-            <property name="orientation">vertical</property>
-            <property name="spacing">15</property>
+            <property name="spacing">10</property>
             <property name="homogeneous">True</property>
-            <property name="layout_style">start</property>
             <child>
               <placeholder/>
             </child>

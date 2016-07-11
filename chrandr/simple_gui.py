@@ -146,12 +146,15 @@ class ChRandrSimpleUI:
         availables = filter(lambda r: r.available(outputs), self.config.randr)
         for cfg in availables:
             widget = Gtk.ToggleButton.new_with_label(cfg.title)
+            if cfg.icon and cfg.icon != "":
+                widget.set_image(Gtk.Image.new_from_file(cfg.icon))
+                widget.set_image_position(Gtk.PositionType.TOP)
             # select the active configuration
             if self.config.active is not None and cfg.code == self.config.active:
                 widget.set_active(True)
             widget.connect('toggled', self.on_select_choice, cfg)
             self._widgets.append(widget)
-            self._box_content.pack_start(widget, True, True, 2)
+            self._box_content.pack_start(widget, True, True, 0)
         self._box_content.show_all()
 
     def on_click_close(self, *args, **kwargs):
