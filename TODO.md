@@ -1,6 +1,7 @@
 # chrandr - TODO list
 
 #### Various
+- Localizations : main gui, error dialog, errors messages
 - Change how to get connected ouputs, instead of executing `xrandr` :
   - Use python3-xlib module ?
     See https://bitbucket.org/portix/srandrd for xlib functions
