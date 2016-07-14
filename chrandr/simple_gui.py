@@ -147,7 +147,10 @@ class ChRandrSimpleUI:
 
         availables = filter(lambda r: r.available(outputs), self.config.randr)
         for cfg in availables:
-            widget = Gtk.ToggleButton.new_with_label(cfg.title)
+            if cfg.title:
+                widget = Gtk.ToggleButton.new_with_label(cfg.title)
+            else:
+                widget = Gtk.ToggleButton.new()
             if cfg.icon and cfg.icon != "":
                 widget.set_image(Gtk.Image.new_from_file(cfg.icon))
                 widget.set_image_position(Gtk.PositionType.TOP)
