@@ -99,12 +99,14 @@ class ChRandrSimpleUI:
             False if an error occurs,
             True otherwise
         """
-        if randr:
-            self._logger.debug("Apply the output code '%s' : %s", randr.code,
-                randr.title)
-            for wid in self._widgets:
-                if wid.get_active() and wid != widget:
-                    wid.set_active(False)
+        self._logger.debug("Apply the output code '%s' : %s", randr.code, randr.title)
+        # search previous selected button and unselect it
+        for wid in self._widgets:
+            if wid.get_active() and wid != widget:
+                wid.set_active(False)
+        if not randr.commands:
+            self._logger.debug("Code '%s' : No command to execute.", randr.code);
+        else:
             try:
                 chrandr.utils.execute_commands(randr.commands)
             except chrandr.utils.ProcessException as e:
