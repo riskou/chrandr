@@ -44,7 +44,7 @@ def execute_commands(commands):
 
     Args:
         * commands (list of str) : List of commands to execute
-    Throws:
+    Raises:
         ProcessException : If a command fails.
     """
     logger = logging.getLogger('execute_commands')
