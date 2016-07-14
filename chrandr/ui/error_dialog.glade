@@ -40,6 +40,7 @@ Author: Adrien Gandon
     <property name="margin_right">2</property>
     <property name="margin_top">3</property>
     <property name="margin_bottom">3</property>
+    <property name="title" translatable="yes">ChRandr - Erreur</property>
     <property name="default_width">400</property>
     <property name="destroy_with_parent">True</property>
     <property name="icon_name">dialog-error</property>
