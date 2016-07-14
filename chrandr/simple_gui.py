@@ -95,31 +95,27 @@ class ChRandrSimpleUI:
         Args:
             * widget (Gtk.ToggleButton) : Button widget
             * randr (RandrConfig) : Configuration to apply
-        Returns:
-            False if an error occurs,
-            True otherwise
         """
         self._logger.debug("Apply the output code '%s' : %s", randr.code, randr.title)
         # search previous selected button and unselect it
         for wid in self._widgets:
             if wid.get_active() and wid != widget:
                 wid.set_active(False)
-        if not randr.commands:
-            self._logger.debug("Code '%s' : No command to execute.", randr.code);
-        else:
-            try:
-                chrandr.utils.execute_commands(randr.commands)
-            except chrandr.utils.ProcessException as e:
-                self.config.save_active_randr(None)
-                widget.set_active(False)
-                # display the error
-                popup = ChRandrErrorDialog(self.window)
-                popup.show(e.cmd, e.output)
-                return False
+
+        try:
+            if not randr.commands:
+                self._logger.debug("Code '%s' : No command to execute.", randr.code);
             else:
-                # update the active configuration in the status file
-                self.config.save_active_randr(randr)
-        return True
+                chrandr.utils.execute_commands(randr.commands)
+        except chrandr.utils.ProcessException as e:
+            self.config.save_active_randr(None)
+            widget.set_active(False)
+            # display the error
+            popup = ChRandrErrorDialog(self.window)
+            popup.show(e.cmd, e.output)
+        else:
+            # update the active configuration in the status file
+            self.config.save_active_randr(randr)
 
     def on_select_choice(self, widget, cfg_data):
         """
