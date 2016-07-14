@@ -36,12 +36,6 @@ def get_connected_outputs():
         return connected_outputs
     return []
 
-##
-## DEV :
-##   Parcourir la liste des randr à la recherche d'un code:
-##   results = list(filter(lambda x: x['code'] == randr_code, self.randr))
-##   code_unique = results[0}
-
 
 def execute_commands(commands):
     """
