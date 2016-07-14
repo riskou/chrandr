@@ -35,7 +35,7 @@ Author: Adrien Gandon
   <!-- interface-authors Adrien Gandon -->
   <object class="GtkWindow" id="chrandr">
     <property name="can_focus">False</property>
-    <property name="title" translatable="yes">ChRandr - Screen configuration</property>
+    <property name="title" translatable="yes">ChRandr - Configuration des écrans</property>
     <property name="type_hint">utility</property>
     <property name="startup_id">chrandr</property>
     <signal name="delete-event" handler="on_click_close" swapped="no"/>
