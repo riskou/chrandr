@@ -38,11 +38,13 @@ setup(
         'Operating System :: POSIX :: Linux',
         'Topic :: Utilities',
         'Environment :: X11 Applications :: GTK',
+
+        'Natural Language :: French',
     ],
 
     keywords='xrandr',
 
-    packages=find_packages(exclude=['docs', 'tests']),
+    packages=find_packages(exclude=['doc', 'test']),
 
     # TODO Add GTK 3 dependency
     # install_requires=['gtk>=3'],

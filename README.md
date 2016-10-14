@@ -29,9 +29,9 @@ You see the result : A gui to launch shell commands, wow it's a revolution :smil
 
 - Clone repository and install chrandr :
 ```sh
-$ git clone --recursive git@github.com:riskou/chrandr.git
-$ cd chrandr/
-$ python3 setup.py install
+  $ git clone git@github.com:riskou/chrandr.git
+  $ cd chrandr/
+  $ python3 setup.py install
 ```
 - Execute `chrandr`.
 - Modify the created configuration file : see [Configuration](#configuration).
@@ -42,10 +42,11 @@ $ python3 setup.py install
 
 Sorry no configuration gui, you have to edit the configuration file manually.
 
-Configuration filename could be set with `chrandr --config <filename>`.
-By default `~/.config/chrandr/chrandr.conf`.
+Default configuration filename is `$XDG_CONFIG_HOME/chrandr/chrandr.conf`
+(i.e. `~/.config/chrandr/chrandr.conf`).
+You could use another one with `chrandr --config <filename>`.
 
-An example is available in [docs/chrandr.conf](docs/chrandr.conf).
+An example is available in [doc/chrandr.conf](doc/chrandr.conf).
 
 ## License
 
