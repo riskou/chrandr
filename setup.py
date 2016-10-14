@@ -44,7 +44,7 @@ setup(
 
     keywords='xrandr',
 
-    packages=find_packages(exclude=['doc', 'test']),
+    packages=find_packages(exclude=['docs', 'tests']),
 
     # TODO Add GTK 3 dependency
     # install_requires=['gtk>=3'],

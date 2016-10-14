@@ -46,7 +46,7 @@ Default configuration filename is `$XDG_CONFIG_HOME/chrandr/chrandr.conf`
 (i.e. `~/.config/chrandr/chrandr.conf`).
 You could use another one with `chrandr --config <filename>`.
 
-An example is available in [doc/chrandr.conf](doc/chrandr.conf).
+An example is available in [docs/chrandr.conf](docs/chrandr.conf).
 
 ## License
 
