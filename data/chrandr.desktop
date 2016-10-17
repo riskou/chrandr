@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Name=Chrandr
+Comment=Change screen configuration
+Exec=chrandr
+Type=Application
+Icon=system
+Categories=System;HardwareSettings;
+Terminal=false
+StartupNotify=true
+Name[fr]=Chrandr
+Comment[fr]=Changer la configuration de l'écran

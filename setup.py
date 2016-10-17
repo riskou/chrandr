@@ -44,15 +44,17 @@ setup(
 
     keywords='xrandr',
 
-    packages=find_packages(exclude=['docs', 'tests']),
-
     # TODO Add GTK 3 dependency
     # install_requires=['gtk>=3'],
 
+    packages=['chrandr'],
     package_data={
         'chrandr': ['ui/*.glade']
     },
-    entry_points = {
+    data_files=[
+        ('share/applications/', ['data/chrandr.desktop'])
+    ],
+    entry_points={
         'gui_scripts': [
             'chrandr = chrandr.simple_gui:main'
         ]
