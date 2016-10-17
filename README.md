@@ -2,20 +2,18 @@
 
 Change xrandr screen configuration in a gui.
 
-Currently in (slow) development.
-
 ##### Features
 
-- Display a list of configurations (HDMI+laptop, only laptop, ...).
-- Only availables options are selectables (i.e. if HDMI is not connected).
-- When applied, an option executes a list of shell commands (defined in configuration file).
+- Display a list of configurations (HDMI and laptop, only laptop, ...).
+- Only availables options are displayed (e.g. if HDMI is not connected).
+- When an option is selected, it executes the shell commands defined in configuration file.
 
 ##### History (my life)
 
 To activate HDMI, I used shell scripts to run xrandr/amixer/pulseaudio commands. It worked...
 Later, and to learn python, I decided to create a gui to launch these commands.
 
-You see the result : A gui to launch shell commands, wow it's a revolution :smile:
+You see the result : A gui to launch shell commands...
 
 ## Dependencies
 
