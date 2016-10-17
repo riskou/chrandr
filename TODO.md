@@ -10,6 +10,7 @@
     => Show only active monitors, not "just" connected.
 
 #### GUI
+- Create an application icon
 - Better gui.
 - Create a configuration gui.
 
