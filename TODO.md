@@ -1,6 +1,7 @@
 # chrandr - TODO list
 
 #### Various
+- Create an AppData file ()https://people.freedesktop.org/%7Ehughsient/appdata/)
 - Localizations : main gui, error dialog, errors messages
 - Change how to get connected ouputs, instead of executing `xrandr` :
   - Use python3-xlib module ?
