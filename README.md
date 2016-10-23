@@ -1,19 +1,12 @@
 # chrandr
 
-Change xrandr screen configuration in a gui.
+Graphical command launcher for screen configuration.
 
-##### Features
+### Features
 
 - Display a list of configurations (HDMI and laptop, only laptop, ...).
-- Only availables options are displayed (e.g. if HDMI is not connected).
-- When an option is selected, it executes the shell commands defined in configuration file.
-
-##### History (my life)
-
-To activate HDMI, I used shell scripts to run xrandr/amixer/pulseaudio commands. It worked...
-Later, and to learn python, I decided to create a gui to launch these commands.
-
-You see the result : A gui to launch shell commands...
+- Only availables options are displayed. Availability depends on connected screens.
+- When an option is selected, configured shell commands are executed.
 
 ## Dependencies
 
