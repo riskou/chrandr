@@ -2,10 +2,12 @@
 
 Graphical command launcher for screen configuration.
 
+![screenshot](https://cloud.githubusercontent.com/assets/7990479/19664496/efafdcfc-9a40-11e6-811c-15f14e3ca1a4.png)
+
 ### Features
 
 - Display a list of configurations (HDMI and laptop, only laptop, ...).
-- Only availables options are displayed. Availability depends on connected screens.
+- Only availables options are displayed, depending on connected screens.
 - When an option is selected, configured shell commands are executed.
 
 ## Dependencies
@@ -13,8 +15,8 @@ Graphical command launcher for screen configuration.
 - Python 3
 - GTK 3 (3.12 or more)
 - `xrandr` shell command
-- `gi` module (gobject introspection or python3-gi)
-- Optionnaly `xdg` module
+- `gi` python module (gobject introspection or python3-gi)
+- Optionnaly `xdg` python module
 
 ## Installation
 
