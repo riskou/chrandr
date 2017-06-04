@@ -41,6 +41,6 @@ You could use another one with `chrandr --config <filename>`.
 
 An example is available in [docs/chrandr.conf](docs/chrandr.conf).
 
-## License
+## License
 
 chrandr is licensed under the [MIT license](LICENSE).
