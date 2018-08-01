@@ -15,7 +15,7 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
     name='chrandr',
-    version='0.3.0',
+    version='0.3.1',
 
     description='Change screen configuration.',
     # long_description=long_description,
