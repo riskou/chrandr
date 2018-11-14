@@ -186,8 +186,9 @@ def _configure_logging(args):
 
 def main():
     """Entry point of chrandr."""
-    current_version = pkg_resources.get_distribution('chrandr').version
-    if current_version is None:
+    try:
+        current_version = pkg_resources.get_distribution('chrandr').version
+    except pkg_resources.DistributionNotFound:
         current_version = 'dev'
     # command line arguments
     parser = argparse.ArgumentParser(
