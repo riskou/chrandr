@@ -7,10 +7,8 @@ import os
 import os.path
 import sys
 import logging
-import pprint
 import subprocess
 import re
-import pprint
 import pkg_resources
 
 

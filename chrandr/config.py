@@ -6,7 +6,6 @@ chrandr - Configuration classes/utils
 import os
 import os.path
 import logging
-import pprint
 
 import configparser
 

@@ -13,7 +13,6 @@ import argparse
 import signal
 import subprocess
 import re
-import pprint
 import pkg_resources
 
 import gi
